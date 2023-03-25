@@ -1,4 +1,7 @@
 *.pdf
+.build
+
+.DS_Store
 
 # Logs
 logs
