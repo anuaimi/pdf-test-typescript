@@ -1,7 +1,0 @@
-{
-  "version": 3,
-  "sources": ["../index.ts"],
-  "sourcesContent": ["import { jsPDF } from \"jspdf\";\n\nconst doc = new jsPDF(\"landscape\");\ndoc.text(\"Hello page one!\", 10, 10);\ndoc.addPage();\ndoc.text(\"Hello page two!\", 10, 10);\ndoc.save(\"a4.pdf\");\n"],
-  "mappings": ";AAAA,mBAAsB;AAEtB,MAAM,MAAM,IAAI,mBAAM,WAAW;AACjC,IAAI,KAAK,mBAAmB,IAAI,EAAE;AAClC,IAAI,QAAQ;AACZ,IAAI,KAAK,mBAAmB,IAAI,EAAE;AAClC,IAAI,KAAK,QAAQ;",
-  "names": []
-}
