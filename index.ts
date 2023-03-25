@@ -105,28 +105,33 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
     leftMargin = pageLayout.left_margin;
     rightMargin = pageLayout.right_margin+pageLayout.offsetForHoles;
   }
+  const centrePoint = pageLayout.width/2;
   const subSectionHeight = sectionHeight * 0.33;
-  console.log(subSectionHeight);
   const ySpacing = sectionHeight * 0.03;
+
+  const indent = 7;
 
   // day 1
   doc.setLineWidth(0.5);
-  console.log(sectionYOffset);
   doc.line(leftMargin, sectionYOffset, pageLayout.width-rightMargin, sectionYOffset); 
-  doc.setFontSize(20).text("27", leftMargin, sectionYOffset+ySpacing);
-  doc.setFontSize(16).text("Thursday", leftMargin, sectionYOffset+(ySpacing*2));
+  doc.setFontSize(20).text("27", leftMargin+indent, sectionYOffset+ySpacing);
+  doc.setFontSize(16).text("Thursday", leftMargin+indent, sectionYOffset+(ySpacing*2));
 
   // day 2
   let subSectionYOffset = sectionYOffset + subSectionHeight
   doc.line(leftMargin, subSectionYOffset, pageLayout.width-rightMargin, subSectionYOffset); 
-  doc.setFontSize(20).text("28", leftMargin, subSectionYOffset+ySpacing);
-  doc.setFontSize(16).text("Friday", leftMargin, subSectionYOffset+(ySpacing*2));
+  doc.setFontSize(20).text("28", leftMargin+indent, subSectionYOffset+ySpacing);
+  doc.setFontSize(16).text("Friday", leftMargin+indent, subSectionYOffset+(ySpacing*2));
 
   // day 3 + 4
   subSectionYOffset += subSectionHeight;
   doc.line(leftMargin, subSectionYOffset, pageLayout.width-rightMargin, subSectionYOffset); 
-  doc.text("29", leftMargin, subSectionYOffset+ySpacing);
-  doc.text("Saturday", leftMargin, subSectionYOffset+(ySpacing*2));
+  doc.setFontSize(20).text("29", leftMargin+1, subSectionYOffset+ySpacing);
+  doc.setFontSize(16).text("Saturday", leftMargin+indent, subSectionYOffset+(ySpacing*2));
+
+  doc.line(centrePoint, subSectionYOffset, centrePoint, subSectionYOffset+subSectionHeight)
+  doc.setFontSize(20).text("30", centrePoint+indent, subSectionYOffset+ySpacing);
+  doc.setFontSize(16).text("Sunday", centrePoint+indent, subSectionYOffset+(ySpacing*2));
 
   // const start = pageWidth * 0.5;
   // doc.line(start, 150, start, section_height); 
