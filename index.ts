@@ -158,9 +158,37 @@ function main() {
   appInputs.paperSize = "letter";
   appInputs.pageSize = "letter";
   appInputs.printDateRange.firstDate = new Date(2023, 2, 19);
-  appInputs.printDateRange.lastDate = new Date(2023, 2, 25);
+  appInputs.printDateRange.lastDate = new Date(2023, 2, 27);
+  // console.log(appInputs.printDateRange.firstDate);
+  // console.log(appInputs.printDateRange.lastDate);
 
-  
+  // calculate # of weeks
+  const timeDiff = (appInputs.printDateRange.lastDate.getTime() - appInputs.printDateRange.firstDate.getTime());
+  const numberOfDays = timeDiff/(1000.0*60*60*24)+1;        // convert from msec to days & add 1 extra day
+  const firstDayOfRange = appInputs.printDateRange.firstDate.getDay();
+  const lastDayOfRange = appInputs.printDateRange.lastDate.getDay();
+  const numberOfWeeks = Math.ceil((firstDayOfRange + numberOfDays) / 7);
+  // console.log("number of days: " + numberOfDays);
+  // console.log("number of weeks:", numberOfWeeks);
+
+  let pageNumber = 0;
+  for (let week = 1; week <= numberOfWeeks; week++) {
+    if ((firstDayOfRange <= 2) && (week == 1) || (week > 1)){
+      
+      // start with 1st (left) page
+      // TODO calc dates for this page -should be sunday 
+      console.log("printing left page for week ", week);
+      pageNumber += 1;
+    }
+    
+    if ((week < numberOfWeeks) || (lastDayOfRange > 2) && (week == numberOfWeeks)) {
+      // print 2nd (right) page 
+      console.log("printing right page for week ", week);
+      pageNumber += 1;
+    }
+  }
+  console.log(pageNumber, " total pages");
+
   // create the document (with 1st page)
   const pageSize = appInputs.paperSize;       // 'letter' or 'a4'
   const pageUnits = "pt";                     // or 'mm', 'in' or others
