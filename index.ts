@@ -100,9 +100,12 @@ class DateRange {
 
 
 // header will print the header for the page
-function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number) {
+function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number, currentDate: Date) {
 
-  // TODO: 
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+  ];
+
   let leftMargin = 0;
   let rightMargin = 0;
 
@@ -121,14 +124,17 @@ function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number) {
   doc.rect(leftMargin, sectionHeight*0.55, 10, 10); 
   doc.rect(leftMargin, sectionHeight*0.70, 10, 10); 
 
+  const month = currentDate.getMonth();
+  const year = currentDate.getFullYear();
+
   const previousSize = doc.getFontSize();
   doc.setFontSize(24);
-  doc.text("July 2023", rightMargin, yMargin, {align:"right"});
+  doc.text(`${monthNames[month]} ${year}`, rightMargin, yMargin, {align:"right"});
   doc.setFontSize(previousSize);
 }
 
 // drawDayBox
-function drawDayBox(doc: jsPDF, boundingBox: BoundingBox, dateOfMonth: number, dayOfWeek: string) {
+function drawDayBox(doc: jsPDF, boundingBox: BoundingBox, givenDay : Date) {
 
   const indent = 7;
   const ySpacing = boundingBox.height * 0.025;
@@ -137,15 +143,46 @@ function drawDayBox(doc: jsPDF, boundingBox: BoundingBox, dateOfMonth: number, d
   doc.setLineWidth(0.5);
   doc.line(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.top); 
 
+  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const dateOfMonth = givenDay.getDate();
+  const dayOfWeek = givenDay.getDay();
+  const day = daysOfWeek[dayOfWeek];
+
   // date and day of week
   doc.setFontSize(20).text(dateOfMonth.toString(), boundingBox.left+indent, boundingBox.top+ySpacing);
-  doc.setFontSize(16).text(dayOfWeek, boundingBox.left+indent, boundingBox.top+(ySpacing*2));
+  doc.setFontSize(16).text(day, boundingBox.left+indent, boundingBox.top+(ySpacing*2));
 
 }
 
+function getFirstDate( givenDate: Date) {
+
+  // want monday to be 1st day not Sunday
+  // and want 1 to be 1st value not 0
+let day = givenDate.getDay();
+  day = (day == 0) ? 7 : day
+
+  let firstDayOfWeek = new Date();
+  if (day <= 3) {
+    // M T W on one page
+    firstDayOfWeek.setDate( givenDate.getDate() - (day-1));
+  } else {
+    // Th F S & S on another page
+    firstDayOfWeek.setDate( givenDate.getDate() - (day-4));
+  }
+
+  return firstDayOfWeek;
+}
+
 //  body
-function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectionHeight: number) {
+function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectionHeight: number, currentDate: Date) {
  
+  // look at day of week
+  // if < 2
+    // calc day 0
+    // display day 0 1 2
+  // else
+    // display day 3 4 5 6
+
   let leftMargin = 0;
   let rightMargin = 0;
   if (pageLayout.holesOnLeft) {
@@ -161,27 +198,34 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
 
   const indent = 7;
 
+  let firstDay = getFirstDate(currentDate);
+
   let boundingBox = {
     left: leftMargin,
     right: pageLayout.width-rightMargin,
     top: sectionYOffset,
     height: sectionYOffset + sectionHeight
   }
-  drawDayBox(doc, boundingBox, 27, "Thursday");
+  // drawDayBox(doc, boundingBox, 27, "Thursday");
+  drawDayBox(doc, boundingBox, firstDay);
 
+  let nextDay = new Date();
+  nextDay.setDate(firstDay.getDate() + 1);
   boundingBox.top = sectionYOffset + subSectionHeight;
-  drawDayBox(doc, boundingBox, 28, "Friday");
+  drawDayBox(doc, boundingBox, nextDay);
 
+  nextDay.setDate(nextDay.getDate() + 1);
   boundingBox.top = sectionYOffset + subSectionHeight*2;
   boundingBox.right = centrePoint;
-  drawDayBox(doc, boundingBox, 29, "Saturday");
+  drawDayBox(doc, boundingBox, nextDay);
 
   let subSectionYOffset = sectionYOffset + (subSectionHeight*2);
   doc.line(centrePoint, subSectionYOffset, centrePoint, subSectionYOffset+subSectionHeight);
 
+  nextDay.setDate(nextDay.getDate() + 1);
   boundingBox.left = centrePoint;
   boundingBox.right = pageLayout.width-rightMargin;
-  drawDayBox(doc, boundingBox, 30, "Sunday");
+  drawDayBox(doc, boundingBox, nextDay);
 
 }
 
@@ -267,15 +311,9 @@ function main() {
       // start with 1st (left) page
       console.log("printing left page for week ", week);
       console.log(currentDate.toString());
-  
-      // header(doc, paperLayout, pageUnits, currentDate);
-      // body(doc, paperLayout, pageUnits, pageUnits, currentDate);
-      // footer(doc, paperLayout, pageUnits, currentDate);
-      
-      // USE DATE TO CUSTOMIZE
-
-      header(doc, pageLayout, headerHeight+1);
-      body(doc, pageLayout, headerHeight, bodyHeight);
+        
+      header(doc, pageLayout, headerHeight+1, currentDate);
+      body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
 
       pageNumber += 1;
@@ -286,10 +324,8 @@ function main() {
       if (pageNumber > 0) {
         doc.addPage();
 
-        // USE DATE TO CUSTOMIZE
-
-        header(doc, pageLayout, headerHeight+1);
-        body(doc, pageLayout, headerHeight, bodyHeight);
+        header(doc, pageLayout, headerHeight+1, currentDate);
+        body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
         footer(doc, pageLayout, footerOffset);
 
       } 
@@ -301,11 +337,6 @@ function main() {
     console.log("new date: ", currentDate.toString())
   }
   console.log(pageNumber, " total pages");
-
-  // setup page details
-  // header(doc, pageLayout, headerHeight+1);
-  // body(doc, pageLayout, headerHeight, bodyHeight);
-  // footer(doc, pageLayout, footerOffset);
 
   // save the PDF to disk
   doc.save("letter-landscape.pdf");
