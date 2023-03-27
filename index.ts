@@ -45,14 +45,48 @@ class PageLayout {
   }
 }
 
+class BoundingBox {
+  left: number;
+  right: number;
+  top: number;
+  height: number;
+
+  constructor() {
+    this.left = 0;
+    this.right = 0;
+    this.top = 0;
+    this.height = 0;
+  }
+}
 class DateRange {
   firstDate: Date;
   lastDate: Date;
+  numberOfDays: number;
+  firstDay: number;     // day of the first date (0-6)
+  lastDay: number;      // day of the last date (0-6)
 
   constructor() {
     this.firstDate = new Date(2023, 0, 1);      // jan 1st
-    this.lastDate = new Date(2023, 11, 31);     // dec 31st
+    this.lastDate = new Date(2023, 0, 1);     // jan 1st
+    this.firstDay = this.firstDate.getDay();
+    this.lastDay = this.lastDate.getDay();
+    this.numberOfDays = 0;
   }
+
+  setRange(firstDate: Date, lastDate: Date) {
+    this.firstDate = firstDate;
+    this.lastDate = lastDate;
+    this.numberOfDays = (this.lastDate.getTime() - this.firstDate.getTime()) / (1000 * 60 * 60 * 24);
+    this.firstDay = this.firstDate.getDay();
+    this.lastDay = this.lastDate.getDay();
+
+    console.log("firstDate: " + this.firstDate.toString());
+    console.log("lastDate: " + this.lastDate.toString());
+    console.log("number of days", this.numberOfDays);
+    console.log("first day", this.firstDay);
+    console.log("last day", this.lastDay);
+  }
+
 }
 
 // function display_punch_holes(doc: jsPDF, pageLayout: PageLayout,) 
@@ -66,9 +100,12 @@ class DateRange {
 
 
 // header will print the header for the page
-function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number) {
+function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number, currentDate: Date) {
 
-  // TODO: 
+  const monthNames = ["January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December"
+  ];
+
   let leftMargin = 0;
   let rightMargin = 0;
 
@@ -87,15 +124,65 @@ function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number) {
   doc.rect(leftMargin, sectionHeight*0.55, 10, 10); 
   doc.rect(leftMargin, sectionHeight*0.70, 10, 10); 
 
+  const month = currentDate.getMonth();
+  const year = currentDate.getFullYear();
+
   const previousSize = doc.getFontSize();
   doc.setFontSize(24);
-  doc.text("July 2023", rightMargin, yMargin, {align:"right"});
+  doc.text(`${monthNames[month]} ${year}`, rightMargin, yMargin, {align:"right"});
   doc.setFontSize(previousSize);
 }
 
-// body
-function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectionHeight: number) {
+// drawDayBox
+function drawDayBox(doc: jsPDF, boundingBox: BoundingBox, givenDay : Date) {
+
+  const indent = 7;
+  const ySpacing = boundingBox.height * 0.025;
+
+  // line at top
+  doc.setLineWidth(0.5);
+  doc.line(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.top); 
+
+  const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const dateOfMonth = givenDay.getDate();
+  const dayOfWeek = givenDay.getDay();
+  const day = daysOfWeek[dayOfWeek];
+
+  // date and day of week
+  doc.setFontSize(20).text(dateOfMonth.toString(), boundingBox.left+indent, boundingBox.top+ySpacing);
+  doc.setFontSize(16).text(day, boundingBox.left+indent, boundingBox.top+(ySpacing*2));
+
+}
+
+function getFirstDate( givenDate: Date) {
+
+  // want monday to be 1st day not Sunday
+  // and want 1 to be 1st value not 0
+let day = givenDate.getDay();
+  day = (day == 0) ? 7 : day
+
+  let firstDayOfWeek = new Date();
+  if (day <= 3) {
+    // M T W on one page
+    firstDayOfWeek.setDate( givenDate.getDate() - (day-1));
+  } else {
+    // Th F S & S on another page
+    firstDayOfWeek.setDate( givenDate.getDate() - (day-4));
+  }
+
+  return firstDayOfWeek;
+}
+
+//  body
+function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectionHeight: number, currentDate: Date) {
  
+  // look at day of week
+  // if < 2
+    // calc day 0
+    // display day 0 1 2
+  // else
+    // display day 3 4 5 6
+
   let leftMargin = 0;
   let rightMargin = 0;
   if (pageLayout.holesOnLeft) {
@@ -111,32 +198,34 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
 
   const indent = 7;
 
-  // day 1
-  doc.setLineWidth(0.5);
-  doc.line(leftMargin, sectionYOffset, pageLayout.width-rightMargin, sectionYOffset); 
-  doc.setFontSize(20).text("27", leftMargin+indent, sectionYOffset+ySpacing);
-  doc.setFontSize(16).text("Thursday", leftMargin+indent, sectionYOffset+(ySpacing*2));
+  let firstDay = getFirstDate(currentDate);
 
-  // day 2
-  let subSectionYOffset = sectionYOffset + subSectionHeight
-  doc.line(leftMargin, subSectionYOffset, pageLayout.width-rightMargin, subSectionYOffset); 
-  doc.setFontSize(20).text("28", leftMargin+indent, subSectionYOffset+ySpacing);
-  doc.setFontSize(16).text("Friday", leftMargin+indent, subSectionYOffset+(ySpacing*2));
+  let boundingBox = {
+    left: leftMargin,
+    right: pageLayout.width-rightMargin,
+    top: sectionYOffset,
+    height: sectionYOffset + sectionHeight
+  }
+  // drawDayBox(doc, boundingBox, 27, "Thursday");
+  drawDayBox(doc, boundingBox, firstDay);
 
-  // day 3 + 4
-  subSectionYOffset += subSectionHeight;
-  doc.line(leftMargin, subSectionYOffset, pageLayout.width-rightMargin, subSectionYOffset); 
-  doc.setFontSize(20).text("29", leftMargin+1, subSectionYOffset+ySpacing);
-  doc.setFontSize(16).text("Saturday", leftMargin+indent, subSectionYOffset+(ySpacing*2));
+  let nextDay = new Date();
+  nextDay.setDate(firstDay.getDate() + 1);
+  boundingBox.top = sectionYOffset + subSectionHeight;
+  drawDayBox(doc, boundingBox, nextDay);
 
-  doc.line(centrePoint, subSectionYOffset, centrePoint, subSectionYOffset+subSectionHeight)
-  doc.setFontSize(20).text("30", centrePoint+indent, subSectionYOffset+ySpacing);
-  doc.setFontSize(16).text("Sunday", centrePoint+indent, subSectionYOffset+(ySpacing*2));
+  nextDay.setDate(nextDay.getDate() + 1);
+  boundingBox.top = sectionYOffset + subSectionHeight*2;
+  boundingBox.right = centrePoint;
+  drawDayBox(doc, boundingBox, nextDay);
 
-  // const start = pageWidth * 0.5;
-  // doc.line(start, 150, start, section_height); 
-  // doc.text("30", start + margin, 90);
-  // doc.text("Sunday", start + margin, 100);
+  let subSectionYOffset = sectionYOffset + (subSectionHeight*2);
+  doc.line(centrePoint, subSectionYOffset, centrePoint, subSectionYOffset+subSectionHeight);
+
+  nextDay.setDate(nextDay.getDate() + 1);
+  boundingBox.left = centrePoint;
+  boundingBox.right = pageLayout.width-rightMargin;
+  drawDayBox(doc, boundingBox, nextDay);
 
 }
 
@@ -157,10 +246,18 @@ function main() {
   const appInputs = new AppInputs();
   appInputs.paperSize = "letter";
   appInputs.pageSize = "letter";
-  appInputs.printDateRange.firstDate = new Date(2023, 2, 19);
-  appInputs.printDateRange.lastDate = new Date(2023, 2, 25);
+  appInputs.printDateRange.setRange( new Date(2023, 2, 19), new Date(2023, 2, 27));
 
-  
+  // calculate # of weeks
+  const timeDiff = (appInputs.printDateRange.lastDate.getTime() - appInputs.printDateRange.firstDate.getTime());
+  const numberOfDays = timeDiff/(1000.0*60*60*24)+1;        // convert from msec to days & add 1 extra day
+  const firstDayOfRange = appInputs.printDateRange.firstDate.getDay();
+  const lastDayOfRange = appInputs.printDateRange.lastDate.getDay();
+  const numberOfWeeks = Math.ceil((appInputs.printDateRange.firstDay + appInputs.printDateRange.numberOfDays) / 7);
+  console.log("number of weeks:", numberOfWeeks);
+
+  // create PDF (and 1st page)
+
   // create the document (with 1st page)
   const pageSize = appInputs.paperSize;       // 'letter' or 'a4'
   const pageUnits = "pt";                     // or 'mm', 'in' or others
@@ -179,6 +276,8 @@ function main() {
   paperLayout.height = paperInfo.pageContext.mediaBox.topRightY;
   console.log("paper size:",paperLayout.width, paperLayout.height);
 
+  // set page layout
+
   // setup page details
   // can be 1 planner page per paper page or 2 planner pages per paper page  
   const pageLayout = new PageLayout();
@@ -189,19 +288,55 @@ function main() {
   pageLayout.offsetForHoles = 72*0.8;                 // 72 pt/in & want 0.8" offset
   
   const headerHeight = paperLayout.height * 0.15;
-  header(doc, pageLayout, headerHeight+1);
-
   const bodyHeight = paperLayout.height * 0.80;
-  body(doc, pageLayout, headerHeight, bodyHeight);
-
   const footerOffset = paperLayout.height * 0.95;
-  footer(doc, pageLayout, footerOffset);
 
-  //page two
-  doc.addPage();
-  header(doc, pageLayout, headerHeight+1);
-  body(doc, pageLayout, headerHeight, bodyHeight);
-  footer(doc, pageLayout, footerOffset);
+  // start generating the pages
+  let pageNumber = 0;
+  let currentDate = appInputs.printDateRange.firstDate
+  for (let week = 1; week <= numberOfWeeks; week++) {
+
+
+    const day = currentDate.getDay();
+    console.log("current day: ", day);
+
+    // see if current week includes M T or W
+    // only print if 
+    if ((day <= 2) && (week == 1) || (week > 1)){
+      
+      if (pageNumber > 0) {
+        doc.addPage();
+      } 
+
+      // start with 1st (left) page
+      console.log("printing left page for week ", week);
+      console.log(currentDate.toString());
+        
+      header(doc, pageLayout, headerHeight+1, currentDate);
+      body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
+      footer(doc, pageLayout, footerOffset);
+
+      pageNumber += 1;
+    }
+    
+    if ((week < numberOfWeeks) || (lastDayOfRange > 2) && (week == numberOfWeeks)) {
+      // print 2nd (right) page 
+      if (pageNumber > 0) {
+        doc.addPage();
+
+        header(doc, pageLayout, headerHeight+1, currentDate);
+        body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
+        footer(doc, pageLayout, footerOffset);
+
+      } 
+      console.log("printing right page for week ", week);
+      pageNumber += 1;
+    }
+
+    currentDate.setDate( currentDate.getDate() + 7);
+    console.log("new date: ", currentDate.toString())
+  }
+  console.log(pageNumber, " total pages");
 
   // save the PDF to disk
   doc.save("letter-landscape.pdf");
