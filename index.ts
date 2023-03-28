@@ -99,15 +99,104 @@ class DateRange {
 // }
 
 
+// getPreviousNextMonths - return tuple with 3 dates: last month, current month & next month
+//                         note, ignore day of month.  just month and year are correct
+function getPreviousNextMonths(givenDate: Date) {
+
+  // create copy & go to prev month
+  let previousDate = new Date(givenDate.valueOf());
+  previousDate.setDate(0);
+
+  // create copy and go to next month
+  let nextDate = new Date(givenDate.valueOf());
+  nextDate.setDate(32);
+
+  return [previousDate, givenDate, nextDate];
+}
+
+function drawCalendar(doc: jsPDF, size: BoundingBox, month: number, year: number) {
+
+  const firstDay = new Date(year, month, 1);
+  firstDay.getDay();
+
+  // month name at top
+  // divide bounding box into 7 columns
+  // find day of 1st of month.  that defines the column
+  let xOffset = 0;
+  let yOffset = 0;
+  let columnWidth = 10;
+  let day: number;
+  let givenDate = new Date(year, month, 1);
+  for (let i = 1; i <= 31; i++) {
+
+    day = new Date(year, month, i).getDay();
+    console.log(day);
+    xOffset = day * columnWidth;
+    doc.setFontSize(7).text(i.toString(), size.left+xOffset, size.top+yOffset);
+
+    if (day == 6) {
+      // increment yOffice
+      yOffset += 10;
+    }
+  }
+
+
+  // doc.setFontSize(7).text("1  2  3   4  5  6  7", size.left, size.height);
+  // doc.setFontSize(7).text("8  9  10 11 12 13 14", size.left, size.height+20);
+  doc.setFontSize(16);
+}
+
+function leftSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number, currentDate: Date) {
+
+  let leftMargin: number;
+  let rightMargin: number;
+
+  if (pageLayout.holesOnLeft) {
+    leftMargin = pageLayout.left_margin+pageLayout.offsetForHoles;
+    rightMargin = pageLayout.width-pageLayout.right_margin;
+  } else {
+    leftMargin = pageLayout.left_margin;
+    rightMargin = pageLayout.width-(pageLayout.right_margin+pageLayout.offsetForHoles);
+  }
+  
+  let objectLayout = new BoundingBox;
+
+  const oldColor = doc.getDrawColor();
+  doc.setDrawColor(40, 40, 40);
+
+  const [prevDate, givenDate, nextDate] = getPreviousNextMonths(currentDate);
+
+  let month = prevDate.getMonth();
+  let year = prevDate.getFullYear();
+  const calendarWidthHeight = sectionHeight * 0.7
+  
+  let boundingBox = new BoundingBox;
+  boundingBox.left = leftMargin;
+  boundingBox.right = leftMargin+80;
+  boundingBox.top = calendarWidthHeight;
+  boundingBox.height = calendarWidthHeight;
+
+  drawCalendar(doc, boundingBox, month, year);
+
+  doc.rect(leftMargin, sectionHeight*0.2, calendarWidthHeight, calendarWidthHeight); 
+  let offset = calendarWidthHeight + 10;
+  doc.rect(leftMargin+offset, sectionHeight*0.2, calendarWidthHeight, calendarWidthHeight); 
+  offset += calendarWidthHeight + 10;
+  doc.rect(leftMargin+offset, sectionHeight*0.2, calendarWidthHeight, calendarWidthHeight); 
+
+  doc.setDrawColor(oldColor);
+
+}
+
 // header will print the header for the page
-function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number, currentDate: Date) {
+function rightSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number, currentDate: Date) {
 
   const monthNames = ["January", "February", "March", "April", "May", "June",
   "July", "August", "September", "October", "November", "December"
   ];
 
-  let leftMargin = 0;
-  let rightMargin = 0;
+  let leftMargin: number;
+  let rightMargin: number;
 
   if (pageLayout.holesOnLeft) {
     leftMargin = pageLayout.left_margin+pageLayout.offsetForHoles;
@@ -119,7 +208,7 @@ function header(doc: jsPDF, pageLayout: PageLayout, sectionHeight: number, curre
 
   const yMargin = sectionHeight * 0.25;
 
-  doc.text("Priorities", leftMargin, yMargin);
+  doc.setFontSize(14).text("Priorities", leftMargin, yMargin);
   doc.rect(leftMargin, sectionHeight*0.4, 10, 10); 
   doc.rect(leftMargin, sectionHeight*0.55, 10, 10); 
   doc.rect(leftMargin, sectionHeight*0.70, 10, 10); 
@@ -312,7 +401,7 @@ function main() {
       console.log("printing left page for week ", week);
       console.log(currentDate.toString());
         
-      header(doc, pageLayout, headerHeight+1, currentDate);
+      leftSideHeader(doc, pageLayout, headerHeight+1, currentDate);
       body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
 
@@ -324,7 +413,7 @@ function main() {
       if (pageNumber > 0) {
         doc.addPage();
 
-        header(doc, pageLayout, headerHeight+1, currentDate);
+        rightSideHeader(doc, pageLayout, headerHeight+1, currentDate);
         body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
         footer(doc, pageLayout, footerOffset);
 
