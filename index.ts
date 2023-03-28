@@ -311,18 +311,28 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
   boundingBox.top = sectionYOffset + subSectionHeight;
   drawDayBox(doc, boundingBox, nextDay);
 
-  nextDay.setDate(nextDay.getDate() + 1);
-  boundingBox.top = sectionYOffset + subSectionHeight*2;
-  boundingBox.right = centrePoint;
-  drawDayBox(doc, boundingBox, nextDay);
 
-  let subSectionYOffset = sectionYOffset + (subSectionHeight*2);
-  doc.line(centrePoint, subSectionYOffset, centrePoint, subSectionYOffset+subSectionHeight);
+  // do we do this or not!!
+  if (nextDay.getDay() > 3) {
+    nextDay.setDate(nextDay.getDate() + 1);
+    boundingBox.top = sectionYOffset + subSectionHeight*2;
+    boundingBox.right = centrePoint;
+    drawDayBox(doc, boundingBox, nextDay);
+  
+    let subSectionYOffset = sectionYOffset + (subSectionHeight*2);
+    doc.line(centrePoint, subSectionYOffset, centrePoint, subSectionYOffset+subSectionHeight);
+  
+    nextDay.setDate(nextDay.getDate() + 1);
+    boundingBox.left = centrePoint;
+    boundingBox.right = pageLayout.width-rightMargin;
+    drawDayBox(doc, boundingBox, nextDay);
+  }
+  else {
+    nextDay.setDate(nextDay.getDate() + 1);
+    boundingBox.top = sectionYOffset + subSectionHeight*2;
+    drawDayBox(doc, boundingBox, nextDay);
+  }
 
-  nextDay.setDate(nextDay.getDate() + 1);
-  boundingBox.left = centrePoint;
-  boundingBox.right = pageLayout.width-rightMargin;
-  drawDayBox(doc, boundingBox, nextDay);
 
 }
 
@@ -339,11 +349,12 @@ function footer(doc:jsPDF, pageLayout: PageLayout, footerOffset: number) {
 // main
 function main() {
 
+
   // setup user input for app (as we don't have a UI yet)
   const appInputs = new AppInputs();
   appInputs.paperSize = "letter";
   appInputs.pageSize = "letter";
-  appInputs.printDateRange.setRange( new Date(2023, 2, 19), new Date(2023, 2, 27));
+  appInputs.printDateRange.setRange( new Date(2023, 2, 19), new Date(2023, 2, 26));
 
   // calculate # of weeks
   const timeDiff = (appInputs.printDateRange.lastDate.getTime() - appInputs.printDateRange.firstDate.getTime());
@@ -384,6 +395,7 @@ function main() {
   pageLayout.right_margin = pageLayout.width*0.02;
   pageLayout.offsetForHoles = 72*0.8;                 // 72 pt/in & want 0.8" offset
   
+  // divide up the page
   const headerHeight = paperLayout.height * 0.15;
   const bodyHeight = paperLayout.height * 0.80;
   const footerOffset = paperLayout.height * 0.95;
@@ -391,48 +403,43 @@ function main() {
   // start generating the pages
   let pageNumber = 0;
   let currentDate = appInputs.printDateRange.firstDate
-  for (let week = 1; week <= numberOfWeeks; week++) {
+  while (currentDate <= appInputs.printDateRange.lastDate) {
+  // for (let week = 1; week <= numberOfWeeks; week++) {
 
-    const day = currentDate.getDay();
+    let day = currentDate.getDay();     // 0 (sun) to 6 (sat)
+    day = (day == 0)? 7 : day;
     console.log('current date:', currentDate.toString(), ' day:', day);
 
-    // see if current week includes M T or W
-    // only print if 
-    // if ((day > 0) && (day <= 2)){
-    if ((week == 1) && ((day > 0) && (day <= 2)) || 
-        (week > 1)){
-      
-      if (pageNumber > 0) {
-        doc.addPage();
-      } 
+    if (pageNumber > 0) {
+      doc.addPage();
+    } 
 
+    // see if current week includes M T or W
+    if ((day >= 1) && (day <= 3)) {
+      
       // start with 1st (left) page
-      console.log("printing left page for week ", week);
+      console.log("printing left page for week ");
       console.log(currentDate.toString());
         
       leftSideHeader(doc, pageLayout, headerHeight+1, currentDate);
       body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
 
+      // move to the next page
+      currentDate.setDate(currentDate.getDate()+(4-day));
       pageNumber += 1;
-    }
-    
-    if ((week < numberOfWeeks) || (lastDayOfRange > 2) && (week == numberOfWeeks)) {
-      // print 2nd (right) page 
-      if (pageNumber > 0) {
-        doc.addPage();
-      }
+    } else {
 
       rightSideHeader(doc, pageLayout, headerHeight+1, currentDate);
       body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
-      console.log("printing right page for week ", week);
+      console.log("printing right page for week ");
 
       // } 
+      currentDate.setDate(currentDate.getDate()+(8-day));
       pageNumber += 1;
     }
-
-    currentDate.setDate( currentDate.getDate() + 7);
+    
     console.log("new date: ", currentDate.toString())
   }
   console.log(pageNumber, " total pages");
