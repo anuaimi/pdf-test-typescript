@@ -1,4 +1,6 @@
 import { jsPDF } from "jspdf";
+import { program, Option} from "commander";
+import process from "node:process";
 
 const monthNames = ["January", "February", "March", "April", "May", "June",
 "July", "August", "September", "October", "November", "December"
@@ -10,11 +12,13 @@ class AppInputs {
   paperSize: string;
   pageSize: string;
   printDateRange: DateRange;
+  singleSided: boolean;
 
   constructor() {
     this.paperSize = "a4";
     this.pageSize = "a4";
     this.printDateRange = new DateRange();
+    this.singleSided = true;
   }
 }
 
@@ -346,15 +350,58 @@ function footer(doc:jsPDF, pageLayout: PageLayout, footerOffset: number) {
   doc.text("personal planner for Athir Nuaimi", pageLayout.width/2, footerYCentre, {align: "center"}); 
 }
 
+// getCommandLineOptions will return the command line options
+function getCommandLineOptions() {
+
+  program
+  .name('planner-pdf')
+  .description('tool to print planner pages for a given date range')
+  .version('0.0.10')
+
+  // .option('-m, --months <char>');
+  .option('-d, --start-date <yyyy-mm-dd>', 'start printing from this date')
+  .option('-m, --months <number>', 'number of months to print', '1')
+  .option('--single-sided', 'print on single side of page')
+  .addOption( new Option('--double-sided', 'print on both sides of page').conflicts('singleSided'))
+  
+  program.parse();
+
+  return program.opts();
+}
+
 // main
 function main() {
 
+  const options = getCommandLineOptions();
+
+  // FYI: could use joi.date to validate but adds 150K not worth it for one function
+
+  // if no start date is given, use today's date
+  let startDate = new Date();
+  if (options.startDate) {
+    options.startDate = options.startDate + " 00:00:00";
+    startDate = new Date(options.startDate);
+  }
+  // console.log(startDate.toDateString());
+
+  let endDate = new Date(startDate.getTime());
+  let dateOffset = 31 * Number(options.months);
+  endDate.setDate( startDate.getDate() + (31*Number(options.months)));
+  // console.log(endDate.toDateString());
+
+  // if singled_sided set, use it.  otherwise, see if double_side specified
+  if (options.doubleSided) {
+    options.singleSided = !options.doubleSided;
+  }
 
   // setup user input for app (as we don't have a UI yet)
   const appInputs = new AppInputs();
   appInputs.paperSize = "letter";
   appInputs.pageSize = "letter";
-  appInputs.printDateRange.setRange( new Date(2023, 2, 19), new Date(2023, 2, 26));
+  appInputs.printDateRange.setRange( startDate, endDate)
+  appInputs.singleSided = options.singleSided;
+  console.log("print from: ", appInputs.printDateRange.firstDate.toDateString());
+  console.log("print to: ", appInputs.printDateRange.lastDate.toDateString());
 
   // calculate # of weeks
   const timeDiff = (appInputs.printDateRange.lastDate.getTime() - appInputs.printDateRange.firstDate.getTime());
