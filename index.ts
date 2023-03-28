@@ -369,6 +369,31 @@ function getCommandLineOptions() {
   return program.opts();
 }
 
+function addHolePunchGuides(doc: jsPDF, pageLayout: PageLayout) {
+
+  // draw circle 1/2 down page 1/2 in offet
+  const xOffset = pageLayout.offsetForHoles / 2;
+  const yOffset = pageLayout.height / 2;
+  const verticalOffset = 72 * 4.25
+  const lineOffset = 12;
+
+  // draw hollow circle
+  doc.setFillColor(255,255,255);
+  doc.circle(xOffset, yOffset-verticalOffset, 6, "FD")
+  // draw cross hair through circle
+  doc.line(xOffset, yOffset-verticalOffset-lineOffset, xOffset, yOffset-verticalOffset+lineOffset);
+  doc.line(xOffset-lineOffset, yOffset-verticalOffset, xOffset+(lineOffset*2), yOffset-verticalOffset);
+
+  doc.circle(xOffset, yOffset, 6, "FD")
+  doc.line(xOffset, yOffset-lineOffset, xOffset, yOffset+lineOffset);
+  doc.line(xOffset-lineOffset, yOffset, xOffset+(lineOffset*2), yOffset);
+
+  doc.circle(xOffset, yOffset+verticalOffset, 6, "FD")
+  doc.line(xOffset, yOffset+verticalOffset-lineOffset, xOffset, yOffset+verticalOffset+lineOffset);
+  doc.line(xOffset-lineOffset, yOffset+verticalOffset, xOffset+(lineOffset*2), yOffset+verticalOffset);
+
+}
+
 // main
 function main() {
 
@@ -471,6 +496,7 @@ function main() {
       leftSideHeader(doc, pageLayout, headerHeight+1, currentDate);
       body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
+      addHolePunchGuides(doc, pageLayout)
 
       // move to the next page
       currentDate.setDate(currentDate.getDate()+(4-day));
@@ -480,6 +506,7 @@ function main() {
       rightSideHeader(doc, pageLayout, headerHeight+1, currentDate);
       body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
+      addHolePunchGuides(doc, pageLayout)
       console.log("printing right page for week ");
 
       // } 
@@ -494,5 +521,6 @@ function main() {
   // save the PDF to disk
   doc.save("letter-landscape.pdf");
 }
+
 
 main();
