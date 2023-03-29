@@ -8,11 +8,12 @@ const monthNames = ["January", "February", "March", "April", "May", "June",
 
 const monthDays = [31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
 
-class AppInputs {
-  paperSize: string;
-  pageSize: string;
-  printDateRange: DateRange;
-  singleSided: boolean;
+// AppInputs has the parameters for how to print the planner pages
+class AppConfig {
+  paperSize: string;          // actual paper printing on
+  pageSize: string;           // page size. can be the same as paper size or smaller (ie a5)
+  printDateRange: DateRange;  // date range of planner pages to print
+  singleSided: boolean;       // whether will be printed out as single-sided or double-sided
 
   constructor() {
     this.paperSize = "a4";
@@ -22,40 +23,41 @@ class AppInputs {
   }
 }
 
-// PageLayout has all details on the layout of the page
+// PageLayout has all details on the paper that the planner pages will be printed on
 class PaperDetails {
-  width: number;
+  width: number;            // in points (pt)
   height: number;
-  // left_margin: number;
-  // right_margin: number;
+  leftMargin: number;
+  rightMargin: number;
 
   constructor() {
     this.width = 0;
     this.height = 0;
-    // this.left_margin = 0;
-    // this.right_margin = 0;
+    this.leftMargin = 0;
+    this.rightMargin = 0;
   }
 }
 
 class PageLayout {
   width: number;            // width of the page 
   height: number;           // height of the page
-  left_margin: number;      // 
-  right_margin: number;
-  offsetForHoles: number;
-  holesOnLeft: boolean;
+  leftMargin: number;       // 
+  rightMargin: number;
+  offsetForHoles: number;   // how much space to reserve for hole guides 
+  holesOnLeft: boolean;     // are holes on left (or right) side of the page
 
   constructor() {
     this.width = 0;
     this.height = 0;
-    this.left_margin = 0;
-    this.right_margin = 0;
-    this.offsetForHoles = 0;
+    this.leftMargin = 0;
+    this.rightMargin = 0;
+    this.offsetForHoles = 72*0.75;  // 3/4" of inch
     this.holesOnLeft = true;
   }
 }
 
-class BoundingBox {
+// DrawArea - bounding box to draw to.  used for sections of page
+class DrawArea {
   left: number;
   right: number;
   top: number;
@@ -68,25 +70,39 @@ class BoundingBox {
     this.height = 0;
   }
 }
+
+// DateRange - start and end dates to print planner pages for
 class DateRange {
   firstDate: Date;
-  lastDate: Date;
-  numberOfDays: number;
   firstDay: number;     // day of the first date (0-6)
+  lastDate: Date;
   lastDay: number;      // day of the last date (0-6)
+  numberOfDays: number;
+  numberOfWeeks: number;
 
   constructor() {
-    this.firstDate = new Date(2023, 0, 1);      // jan 1st
-    this.lastDate = new Date(2023, 0, 1);     // jan 1st
-    this.firstDay = this.firstDate.getDay();
-    this.lastDay = this.lastDate.getDay();
+    // default to current year
+    const currentDate = new Date();
+    const firstDate =  new Date(currentDate.getFullYear(), 0, 1);
+    const lastDate = new Date(currentDate.getFullYear(), 11, 31);    // dec 31st
+
+    this.firstDate = new Date();
+    this.firstDay = 0;
+    this.lastDate = new Date();
+    this.lastDay = 0;
     this.numberOfDays = 0;
+    this.numberOfWeeks = 0;
+
+    this.setRange( firstDate, lastDate);
   }
 
   setRange(firstDate: Date, lastDate: Date) {
     this.firstDate = firstDate;
     this.lastDate = lastDate;
+
     this.numberOfDays = (this.lastDate.getTime() - this.firstDate.getTime()) / (1000 * 60 * 60 * 24);
+    this.numberOfWeeks = Math.ceil((this.firstDay + this.numberOfDays) / 7);
+
     this.firstDay = this.firstDate.getDay();
     this.lastDay = this.lastDate.getDay();
 
@@ -96,18 +112,7 @@ class DateRange {
     console.log("first day", this.firstDay);
     console.log("last day", this.lastDay);
   }
-
 }
-
-// function display_punch_holes(doc: jsPDF, pageLayout: PageLayout,) 
-// {
-  // 3 holes 
-  // center & 2 3/4" on each side, 0.5 in margin for holes
-  // 8.5mm from edge, 108mm between each hole, 7mm diameter hole
-
-  // 6 holes
-// }
-
 
 // getPreviousNextMonths - return tuple with 3 dates: last month, current month & next month
 //                         note, ignore day of month.  just month and year are correct
@@ -125,7 +130,7 @@ function getPreviousNextMonths(givenDate: Date) {
 }
 
 // drawCalendar - draws calendar for a given month and year
-function drawCalendar(doc: jsPDF, size: BoundingBox, month: number, year: number) {
+function drawCalendar(doc: jsPDF, size: DrawArea, month: number, year: number) {
 
   // month name at top
   // divide bounding box into 7 columns
@@ -178,14 +183,14 @@ function leftSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: numbe
   let rightMargin: number;
 
   if (pageLayout.holesOnLeft) {
-    leftMargin = pageLayout.left_margin+pageLayout.offsetForHoles;
-    rightMargin = pageLayout.width-pageLayout.right_margin;
+    leftMargin = pageLayout.leftMargin+pageLayout.offsetForHoles;
+    rightMargin = pageLayout.width-pageLayout.rightMargin;
   } else {
-    leftMargin = pageLayout.left_margin;
-    rightMargin = pageLayout.width-(pageLayout.right_margin+pageLayout.offsetForHoles);
+    leftMargin = pageLayout.leftMargin;
+    rightMargin = pageLayout.width-(pageLayout.rightMargin+pageLayout.offsetForHoles);
   }
   
-  let objectLayout = new BoundingBox;
+  let objectLayout = new DrawArea;
 
   const oldColor = doc.getDrawColor();
   doc.setDrawColor(40, 40, 40);
@@ -196,7 +201,7 @@ function leftSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: numbe
   let year = prevDate.getFullYear();
   const calendarWidthHeight = sectionHeight * 0.7
   
-  let boundingBox = new BoundingBox;
+  let boundingBox = new DrawArea;
   boundingBox.left = leftMargin;
   boundingBox.right = leftMargin+80;
   boundingBox.top = 30;
@@ -228,11 +233,11 @@ function rightSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: numb
   let rightMargin: number;
 
   if (pageLayout.holesOnLeft) {
-    leftMargin = pageLayout.left_margin+pageLayout.offsetForHoles;
-    rightMargin = pageLayout.width-pageLayout.right_margin;
+    leftMargin = pageLayout.leftMargin+pageLayout.offsetForHoles;
+    rightMargin = pageLayout.width-pageLayout.rightMargin;
   } else {
-    leftMargin = pageLayout.left_margin;
-    rightMargin = pageLayout.width-(pageLayout.right_margin+pageLayout.offsetForHoles);
+    leftMargin = pageLayout.leftMargin;
+    rightMargin = pageLayout.width-(pageLayout.rightMargin+pageLayout.offsetForHoles);
   }
 
   const yMargin = sectionHeight * 0.25;
@@ -252,7 +257,7 @@ function rightSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: numb
 }
 
 // drawDayBox
-function drawDayBox(doc: jsPDF, boundingBox: BoundingBox, givenDay : Date) {
+function drawDayBox(doc: jsPDF, boundingBox: DrawArea, givenDay : Date) {
 
   const indent = 7;
   const ySpacing = boundingBox.height * 0.025;
@@ -272,23 +277,26 @@ function drawDayBox(doc: jsPDF, boundingBox: BoundingBox, givenDay : Date) {
 
 }
 
-function getFirstDate( givenDate: Date) {
+// getDateAtTopOfPage - for a given date, return which date is at 
+//                      the top of the page (that includes given date)
+function getDateAtTopOfPage( givenDate: Date) {
 
-  // want monday to be 1st day not Sunday
-  // and want 1 to be 1st value not 0
-let day = givenDate.getDay();
+  // top of page is either monday or thursday
+
+  // make sunday 7 rather than 0
+  let day = givenDate.getDay();
   day = (day == 0) ? 7 : day
 
-  let firstDayOfWeek = new Date();
+  let dateAtTop = new Date(givenDate.valueOf());
+  // M T W on one page
   if (day <= 3) {
-    // M T W on one page
-    firstDayOfWeek.setDate( givenDate.getDate() - (day-1));
+    dateAtTop.setDate( givenDate.getDate() - (day-1));
   } else {
     // Th F S & S on another page
-    firstDayOfWeek.setDate( givenDate.getDate() - (day-4));
+    dateAtTop.setDate( givenDate.getDate() - (day-4));
   }
-
-  return firstDayOfWeek;
+  console.log("firstDayOfWeek: ", dateAtTop.getDay());
+  return dateAtTop;
 }
 
 //  body
@@ -304,11 +312,11 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
   let leftMargin = 0;
   let rightMargin = 0;
   if (pageLayout.holesOnLeft) {
-    leftMargin = pageLayout.left_margin+pageLayout.offsetForHoles;
-    rightMargin = pageLayout.right_margin;
+    leftMargin = pageLayout.leftMargin+pageLayout.offsetForHoles;
+    rightMargin = pageLayout.rightMargin;
   } else {
-    leftMargin = pageLayout.left_margin;
-    rightMargin = pageLayout.right_margin+pageLayout.offsetForHoles;
+    leftMargin = pageLayout.leftMargin;
+    rightMargin = pageLayout.rightMargin+pageLayout.offsetForHoles;
   }
   const centrePoint = pageLayout.width/2;
   const subSectionHeight = sectionHeight * 0.33;
@@ -316,7 +324,8 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
 
   const indent = 7;
 
-  let firstDay = getFirstDate(currentDate);
+  let firstDay = getDateAtTopOfPage(currentDate);
+
 
   let boundingBox = {
     left: leftMargin,
@@ -324,10 +333,9 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
     top: sectionYOffset,
     height: sectionYOffset + sectionHeight
   }
-  // drawDayBox(doc, boundingBox, 27, "Thursday");
   drawDayBox(doc, boundingBox, firstDay);
 
-  let nextDay = new Date();
+  let nextDay = new Date(firstDay.valueOf());
   nextDay.setDate(firstDay.getDate() + 1);
   boundingBox.top = sectionYOffset + subSectionHeight;
   drawDayBox(doc, boundingBox, nextDay);
@@ -367,9 +375,10 @@ function footer(doc:jsPDF, pageLayout: PageLayout, footerOffset: number) {
   doc.text("personal planner for Athir Nuaimi", pageLayout.width/2, footerYCentre, {align: "center"}); 
 }
 
-// getCommandLineOptions will return the command line options
-function getCommandLineOptions() {
+// getAppOptions will return the command line options
+function getAppOptions() {
 
+  // setup what options we support
   program
   .name('planner-pdf')
   .description('tool to print planner pages for a given date range')
@@ -381,9 +390,47 @@ function getCommandLineOptions() {
   .option('--single-sided', 'print on single side of page')
   .addOption( new Option('--double-sided', 'print on both sides of page').conflicts('singleSided'))
   
+  // parse the comand line (options)
   program.parse();
+  let options = program.opts();
 
-  return program.opts();
+  // assume start from today's date, (unless was specified)
+  let startDate = new Date();
+  if (options.startDate) {
+    options.startDate = options.startDate + " 00:00:00";      // without time, date assumed to be UTC
+    startDate = new Date(options.startDate);
+  }
+  // console.log(startDate.toDateString());
+  
+  // end a month from now, unless was specified
+  let endDate = new Date(startDate.getTime());
+  let dateOffset = 31 * Number(options.months);
+  endDate.setDate( startDate.getDate() + (31*Number(options.months)));
+  // console.log(endDate.toDateString());
+  
+  // if singled_sided set, use it.  otherwise, see if double_side specified
+  if (options.doubleSided) {
+    options.singleSided = !options.doubleSided;
+  }
+  
+  // setup user input for app (as we don't have a UI yet)
+  let appConfig = new AppConfig();
+  appConfig.paperSize = "letter";
+  appConfig.pageSize = "letter";
+  appConfig.printDateRange.setRange( startDate, endDate)
+  appConfig.singleSided = options.singleSided;
+  console.log("print from: ", appConfig.printDateRange.firstDate.toDateString());
+  console.log("print to: ", appConfig.printDateRange.lastDate.toDateString());
+
+  // calculate # of weeks
+  const timeDiff = (appConfig.printDateRange.lastDate.getTime() - appConfig.printDateRange.firstDate.getTime());
+  const numberOfDays = timeDiff/(1000.0*60*60*24)+1;        // convert from msec to days & add 1 extra day
+  const firstDayOfRange = appConfig.printDateRange.firstDate.getDay();
+  const lastDayOfRange = appConfig.printDateRange.lastDate.getDay();
+  const numberOfWeeks = Math.ceil((appConfig.printDateRange.firstDay + appConfig.printDateRange.numberOfDays) / 7);
+  console.log("number of weeks:", numberOfWeeks);
+
+  return appConfig;
 }
 
 // addHolePunchGuides - is for 3 hole - A4/letter sized paper
@@ -420,52 +467,15 @@ function addHolePunchGuides(doc: jsPDF, pageLayout: PageLayout) {
 // main
 function main() {
 
-  const options = getCommandLineOptions();
-
-  // FYI: could use joi.date to validate but adds 150K not worth it for one function
-
-  // if no start date is given, use today's date
-  let startDate = new Date();
-  if (options.startDate) {
-    options.startDate = options.startDate + " 00:00:00";
-    startDate = new Date(options.startDate);
-  }
-  // console.log(startDate.toDateString());
-
-  let endDate = new Date(startDate.getTime());
-  let dateOffset = 31 * Number(options.months);
-  endDate.setDate( startDate.getDate() + (31*Number(options.months)));
-  // console.log(endDate.toDateString());
-
-  // if singled_sided set, use it.  otherwise, see if double_side specified
-  if (options.doubleSided) {
-    options.singleSided = !options.doubleSided;
-  }
-
-  // setup user input for app (as we don't have a UI yet)
-  const appInputs = new AppInputs();
-  appInputs.paperSize = "letter";
-  appInputs.pageSize = "letter";
-  appInputs.printDateRange.setRange( startDate, endDate)
-  appInputs.singleSided = options.singleSided;
-  console.log("print from: ", appInputs.printDateRange.firstDate.toDateString());
-  console.log("print to: ", appInputs.printDateRange.lastDate.toDateString());
-
-  // calculate # of weeks
-  const timeDiff = (appInputs.printDateRange.lastDate.getTime() - appInputs.printDateRange.firstDate.getTime());
-  const numberOfDays = timeDiff/(1000.0*60*60*24)+1;        // convert from msec to days & add 1 extra day
-  const firstDayOfRange = appInputs.printDateRange.firstDate.getDay();
-  const lastDayOfRange = appInputs.printDateRange.lastDate.getDay();
-  const numberOfWeeks = Math.ceil((appInputs.printDateRange.firstDay + appInputs.printDateRange.numberOfDays) / 7);
-  console.log("number of weeks:", numberOfWeeks);
+  // process command line arguments
+  const appConfig = getAppOptions();
 
   // create PDF (and 1st page)
-
   // create the document (with 1st page)
-  const pageSize = appInputs.paperSize;       // 'letter' or 'a4'
+  const pageSize = appConfig.paperSize;       // 'letter' or 'a4'
   const pageUnits = "pt";                     // or 'mm', 'in' or others
   let orientation = 'p';                  // default to portrait
-  if (appInputs.pageSize == "a5") {
+  if (appConfig.pageSize == "a5") {
     orientation = "l";                    // portrait - take up entire paper
   }
 
@@ -486,8 +496,8 @@ function main() {
   const pageLayout = new PageLayout();
   pageLayout.width = paperLayout.width;
   pageLayout.height = paperLayout.height;
-  pageLayout.left_margin = pageLayout.width*0.02;
-  pageLayout.right_margin = pageLayout.width*0.02;
+  pageLayout.leftMargin = pageLayout.width*0.02;
+  pageLayout.rightMargin = pageLayout.width*0.02;
   pageLayout.offsetForHoles = 72*0.8;                 // 72 pt/in & want 0.8" offset
   
   // divide up the page
@@ -497,8 +507,8 @@ function main() {
 
   // start generating the pages
   let pageNumber = 0;
-  let currentDate = appInputs.printDateRange.firstDate
-  while (currentDate <= appInputs.printDateRange.lastDate) {
+  let currentDate = appConfig.printDateRange.firstDate
+  while (currentDate <= appConfig.printDateRange.lastDate) {
   // for (let week = 1; week <= numberOfWeeks; week++) {
 
     let day = currentDate.getDay();     // 0 (sun) to 6 (sat)
