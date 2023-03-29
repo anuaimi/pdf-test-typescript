@@ -475,21 +475,21 @@ function main() {
   const pageSize = appConfig.paperSize;       // 'letter' or 'a4'
   const pageUnits = "pt";                     // or 'mm', 'in' or others
   let orientation = 'p';                  // default to portrait
+  // TODO a5 not support yet (next version)
   if (appConfig.pageSize == "a5") {
     orientation = "l";                    // portrait - take up entire paper
   }
 
   // create the PDF - note, 1st param can't be a string so need to use ?
-  const doc = new jsPDF(orientation == 'p' ? 'p' : 'l', pageUnits, pageSize, false);
+  const compressPDF = false;
+  const doc = new jsPDF(orientation == 'p' ? 'p' : 'l', pageUnits, pageSize, compressPDF);
 
-  // get pager size 
-  const paperInfo = doc.getPageInfo(1);
+  // get pager size in pts from jsPDF
   const paperLayout = new PaperDetails();
+  const paperInfo = doc.getPageInfo(1);
   paperLayout.width = paperInfo.pageContext.mediaBox.topRightX;
   paperLayout.height = paperInfo.pageContext.mediaBox.topRightY;
   console.log("paper size:",paperLayout.width, paperLayout.height);
-
-  // set page layout
 
   // setup page details
   // can be 1 planner page per paper page or 2 planner pages per paper page  
@@ -505,25 +505,36 @@ function main() {
   const bodyHeight = paperLayout.height * 0.80;
   const footerOffset = paperLayout.height * 0.95;
 
+  // if double side, check if we need to add a blank 
+
   // start generating the pages
   let pageNumber = 0;
   let currentDate = appConfig.printDateRange.firstDate
   while (currentDate <= appConfig.printDateRange.lastDate) {
-  // for (let week = 1; week <= numberOfWeeks; week++) {
 
-    let day = currentDate.getDay();     // 0 (sun) to 6 (sat)
-    day = (day == 0)? 7 : day;
-    console.log('current date:', currentDate.toString(), ' day:', day);
-
-    if (pageNumber > 0) {
+      // get 1st day of the week - sun: 0 to sat: 6
+      let day = currentDate.getDay();    
+      day = (day == 0)? 7 : day;              // move sun from 0 to 7
+      console.log('current date:', currentDate.toString(), ' day:', day);
+    
+    if (pageNumber == 0) {
+      // if double sided, need to check if 1st page is blank
+      //   if first date is on left page (ie M T or W)
+      //   1st page will be blank as left page is on back (ie 2nd page)
+      if (!appConfig.singleSided && ((day >= 1) && (day <= 3))) {
+        doc.addPage();
+      }
+    } else {
+      // if not 1st page, need to add a new page
       doc.addPage();
     } 
 
-    // see if current week includes M T or W
+    // see if 1st date is on left or right page
+    // left is M T W and right is T F S S
     if ((day >= 1) && (day <= 3)) {
       
       // start with 1st (left) page
-      console.log("printing left page for week ");
+      console.log("printing left page (for given week)");
       console.log(currentDate.toString());
         
       leftSideHeader(doc, pageLayout, headerHeight+1, currentDate);
