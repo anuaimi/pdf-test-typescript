@@ -131,22 +131,29 @@ function drawCalendar(doc: jsPDF, size: BoundingBox, month: number, year: number
   // divide bounding box into 7 columns
   // find day of 1st of month.  that defines the column
 
-
   let xOffset = 0;
   let yOffset = 0;
   let columnWidth = 10;
-
+  let centrePoint = (size.right-size.left) * 0.4;
+// console.log("center: ",centrePoint);
   let day: number;
   let givenDate = new Date(year, month, 1);
 
-  doc.setFontSize(8).text(monthNames[givenDate.getMonth()], size.left+xOffset, size.top+yOffset);
+  doc.setFontSize(8).text(monthNames[givenDate.getMonth()], size.left+centrePoint, size.top+yOffset,  {align: "center"});
+  yOffset += 10;
+
+  const title = "SMTWTFSS"
+  for (let i = 0; i < 7; i++){
+    xOffset = i * columnWidth;
+    doc.setFontSize(8).text(title[i], size.left+xOffset, size.top+yOffset, {align: "center"});
+  }
   yOffset += 10;
 
   for (let i = 1; i <= monthDays[month]; i++) {
 
     day = new Date(year, month, i).getDay();
     xOffset = day * columnWidth;
-    doc.setFontSize(8).text(i.toString(), size.left+xOffset, size.top+yOffset);
+    doc.setFontSize(8).text(i.toString(), size.left+xOffset, size.top+yOffset, {align: "center"});
 
     if (day == 6) {
       // increment yOffice
@@ -192,12 +199,14 @@ function leftSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: numbe
   year = givenDate.getFullYear();
   let offset = calendarWidthHeight + 10;
   boundingBox.left = leftMargin + offset
+  boundingBox.right = boundingBox.left + 80;
   drawCalendar(doc, boundingBox, month, year);
 
   month = nextDate.getMonth();
   year = nextDate.getFullYear();
   offset += calendarWidthHeight + 10;
   boundingBox.left = leftMargin + offset
+  boundingBox.right = boundingBox.left + 80;
   drawCalendar(doc, boundingBox, month, year);
 
   doc.setDrawColor(oldColor);
@@ -369,25 +378,31 @@ function getCommandLineOptions() {
   return program.opts();
 }
 
+// addHolePunchGuides - is for 3 hole - A4/letter sized paper
 function addHolePunchGuides(doc: jsPDF, pageLayout: PageLayout) {
 
   // draw circle 1/2 down page 1/2 in offet
   const xOffset = pageLayout.offsetForHoles / 2;
   const yOffset = pageLayout.height / 2;
-  const verticalOffset = 72 * 4.25
-  const lineOffset = 12;
+  const verticalOffset = 72 * 4.25          // each hole is 4.25" apart - 72 pt/in
+  const lineOffset = 12;                    // about 1/4 inch
+
+  doc.setFillColor(255,255,255);            // white (for interior of circle)
 
   // draw hollow circle
-  doc.setFillColor(255,255,255);
-  doc.circle(xOffset, yOffset-verticalOffset, 6, "FD")
   // draw cross hair through circle
+
+  // center
+  doc.circle(xOffset, yOffset-verticalOffset, 6, "FD")
   doc.line(xOffset, yOffset-verticalOffset-lineOffset, xOffset, yOffset-verticalOffset+lineOffset);
   doc.line(xOffset-lineOffset, yOffset-verticalOffset, xOffset+(lineOffset*2), yOffset-verticalOffset);
 
+  // above
   doc.circle(xOffset, yOffset, 6, "FD")
   doc.line(xOffset, yOffset-lineOffset, xOffset, yOffset+lineOffset);
   doc.line(xOffset-lineOffset, yOffset, xOffset+(lineOffset*2), yOffset);
 
+  // below
   doc.circle(xOffset, yOffset+verticalOffset, 6, "FD")
   doc.line(xOffset, yOffset+verticalOffset-lineOffset, xOffset, yOffset+verticalOffset+lineOffset);
   doc.line(xOffset-lineOffset, yOffset+verticalOffset, xOffset+(lineOffset*2), yOffset+verticalOffset);
