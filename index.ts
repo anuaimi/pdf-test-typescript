@@ -149,7 +149,15 @@ function drawCalendar(doc: jsPDF, size: BoundingBox, month: number, year: number
   }
   yOffset += 10;
 
-  for (let i = 1; i <= monthDays[month]; i++) {
+  let daysInMonth = monthDays[month];
+  if (month == 1) {     // feb
+    // check for leap year
+    if ((year % 100 === 0) ? (year % 400 === 0) : (year % 4 === 0)) {
+      daysInMonth = 29;
+    }
+  }
+  // print each day of the month
+  for (let i = 1; i <= daysInMonth; i++) {
 
     day = new Date(year, month, i).getDay();
     xOffset = day * columnWidth;
