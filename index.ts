@@ -58,15 +58,15 @@ class PageLayout {
 
 // DrawArea - bounding box to draw to.  used for sections of page
 class DrawArea {
-  left: number;
-  right: number;
-  top: number;
+  x: number;
+  y: number;
+  width: number;
   height: number;
 
   constructor() {
-    this.left = 0;
-    this.right = 0;
-    this.top = 0;
+    this.x = 0;
+    this.y = 0;
+    this.width = 0;
     this.height = 0;
   }
 }
@@ -106,11 +106,11 @@ class DateRange {
     this.firstDay = this.firstDate.getDay();
     this.lastDay = this.lastDate.getDay();
 
-    console.log("firstDate: " + this.firstDate.toString());
-    console.log("lastDate: " + this.lastDate.toString());
-    console.log("number of days", this.numberOfDays);
-    console.log("first day", this.firstDay);
-    console.log("last day", this.lastDay);
+    // console.log("firstDate: " + this.firstDate.toString());
+    // console.log("lastDate: " + this.lastDate.toString());
+    // console.log("number of days", this.numberOfDays);
+    // console.log("first day", this.firstDay);
+    // console.log("last day", this.lastDay);
   }
 }
 
@@ -138,19 +138,18 @@ function drawCalendar(doc: jsPDF, size: DrawArea, month: number, year: number) {
 
   let xOffset = 0;
   let yOffset = 0;
-  let columnWidth = 10;
-  let centrePoint = (size.right-size.left) * 0.4;
-// console.log("center: ",centrePoint);
+  let columnWidth = 12;
+  let centrePoint = size.width/2;
   let day: number;
   let givenDate = new Date(year, month, 1);
 
-  doc.setFontSize(8).text(monthNames[givenDate.getMonth()], size.left+centrePoint, size.top+yOffset,  {align: "center"});
+  doc.setFontSize(8).text(monthNames[givenDate.getMonth()], size.x+centrePoint, size.y+yOffset,  {align: "center"});
   yOffset += 10;
 
   const title = "SMTWTFSS"
   for (let i = 0; i < 7; i++){
     xOffset = i * columnWidth;
-    doc.setFontSize(8).text(title[i], size.left+xOffset, size.top+yOffset, {align: "center"});
+    doc.setFontSize(8).text(title[i], size.x+xOffset, size.y+yOffset, {align: "center"});
   }
   yOffset += 10;
 
@@ -166,7 +165,7 @@ function drawCalendar(doc: jsPDF, size: DrawArea, month: number, year: number) {
 
     day = new Date(year, month, i).getDay();
     xOffset = day * columnWidth;
-    doc.setFontSize(8).text(i.toString(), size.left+xOffset, size.top+yOffset, {align: "center"});
+    doc.setFontSize(8).text(i.toString(), size.x+xOffset, size.y+yOffset, {align: "center"});
 
     if (day == 6) {
       // increment yOffice
@@ -190,8 +189,6 @@ function leftSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: numbe
     rightMargin = pageLayout.width-(pageLayout.rightMargin+pageLayout.offsetForHoles);
   }
   
-  let objectLayout = new DrawArea;
-
   const oldColor = doc.getDrawColor();
   doc.setDrawColor(40, 40, 40);
 
@@ -202,24 +199,24 @@ function leftSideHeader(doc: jsPDF, pageLayout: PageLayout, sectionHeight: numbe
   const calendarWidthHeight = sectionHeight * 0.7
   
   let boundingBox = new DrawArea;
-  boundingBox.left = leftMargin;
-  boundingBox.right = leftMargin+80;
-  boundingBox.top = 30;
+  boundingBox.x = leftMargin;
+  boundingBox.y = 30;
+  boundingBox.width = 80;
   boundingBox.height = calendarWidthHeight;
   drawCalendar(doc, boundingBox, month, year);
 
   month = givenDate.getMonth();
   year = givenDate.getFullYear();
   let offset = calendarWidthHeight + 10;
-  boundingBox.left = leftMargin + offset
-  boundingBox.right = boundingBox.left + 80;
+  boundingBox.x = leftMargin + offset
+  boundingBox.width = 80;
   drawCalendar(doc, boundingBox, month, year);
 
   month = nextDate.getMonth();
   year = nextDate.getFullYear();
   offset += calendarWidthHeight + 10;
-  boundingBox.left = leftMargin + offset
-  boundingBox.right = boundingBox.left + 80;
+  boundingBox.x = leftMargin + offset
+  boundingBox.width = 80;
   drawCalendar(doc, boundingBox, month, year);
 
   doc.setDrawColor(oldColor);
@@ -264,7 +261,7 @@ function drawDayBox(doc: jsPDF, boundingBox: DrawArea, givenDay : Date) {
 
   // line at top
   doc.setLineWidth(0.5);
-  doc.line(boundingBox.left, boundingBox.top, boundingBox.right, boundingBox.top); 
+  doc.line(boundingBox.x, boundingBox.y, boundingBox.width, boundingBox.y); 
 
   const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
   const dateOfMonth = givenDay.getDate();
@@ -272,8 +269,8 @@ function drawDayBox(doc: jsPDF, boundingBox: DrawArea, givenDay : Date) {
   const day = daysOfWeek[dayOfWeek];
 
   // date and day of week
-  doc.setFontSize(20).text(dateOfMonth.toString(), boundingBox.left+indent, boundingBox.top+ySpacing);
-  doc.setFontSize(16).text(day, boundingBox.left+indent, boundingBox.top+(ySpacing*2));
+  doc.setFontSize(20).text(dateOfMonth.toString(), boundingBox.x+indent, boundingBox.y+ySpacing);
+  doc.setFontSize(16).text(day, boundingBox.x+indent, boundingBox.y+(ySpacing*2));
 
 }
 
@@ -328,37 +325,37 @@ function body(doc: jsPDF, pageLayout: PageLayout, sectionYOffset: number, sectio
 
 
   let boundingBox = {
-    left: leftMargin,
-    right: pageLayout.width-rightMargin,
-    top: sectionYOffset,
+    x: leftMargin,
+    width: pageLayout.width-(leftMargin+rightMargin),
+    y: sectionYOffset,
     height: sectionYOffset + sectionHeight
   }
   drawDayBox(doc, boundingBox, firstDay);
 
   let nextDay = new Date(firstDay.valueOf());
   nextDay.setDate(firstDay.getDate() + 1);
-  boundingBox.top = sectionYOffset + subSectionHeight;
+  boundingBox.y = sectionYOffset + subSectionHeight;
   drawDayBox(doc, boundingBox, nextDay);
 
 
   // do we do this or not!!
   if (nextDay.getDay() > 3) {
     nextDay.setDate(nextDay.getDate() + 1);
-    boundingBox.top = sectionYOffset + subSectionHeight*2;
-    boundingBox.right = centrePoint;
+    boundingBox.y = sectionYOffset + subSectionHeight*2;
+    boundingBox.width = centrePoint;
     drawDayBox(doc, boundingBox, nextDay);
   
     let subSectionYOffset = sectionYOffset + (subSectionHeight*2);
     doc.line(centrePoint, subSectionYOffset, centrePoint, subSectionYOffset+subSectionHeight);
   
     nextDay.setDate(nextDay.getDate() + 1);
-    boundingBox.left = centrePoint;
-    boundingBox.right = pageLayout.width-rightMargin;
+    boundingBox.x = centrePoint;
+    boundingBox.width = pageLayout.width-rightMargin;
     drawDayBox(doc, boundingBox, nextDay);
   }
   else {
     nextDay.setDate(nextDay.getDate() + 1);
-    boundingBox.top = sectionYOffset + subSectionHeight*2;
+    boundingBox.y = sectionYOffset + subSectionHeight*2;
     drawDayBox(doc, boundingBox, nextDay);
   }
 
@@ -387,7 +384,7 @@ function getAppOptions() {
   // .option('-m, --months <char>');
   .option('-d, --start-date <yyyy-mm-dd>', 'start printing from this date')
   .option('-m, --months <number>', 'number of months to print', '1')
-  .option('--single-sided', 'print on single side of page')
+  .option('--single-sided', 'print on single side of page', true)
   .addOption( new Option('--double-sided', 'print on both sides of page').conflicts('singleSided'))
   
   // parse the comand line (options)
@@ -412,7 +409,8 @@ function getAppOptions() {
   if (options.doubleSided) {
     options.singleSided = !options.doubleSided;
   }
-  
+  console.log("single sided: " + options.singleSided);
+
   // setup user input for app (as we don't have a UI yet)
   let appConfig = new AppConfig();
   appConfig.paperSize = "letter";
@@ -434,11 +432,13 @@ function getAppOptions() {
 }
 
 // addHolePunchGuides - is for 3 hole - A4/letter sized paper
-function addHolePunchGuides(doc: jsPDF, pageLayout: PageLayout) {
+function addHolePunchGuides(doc: jsPDF, drawArea: DrawArea) {
+
+  console.log("drawing hole guides: ", drawArea);
 
   // draw circle 1/2 down page 1/2 in offet
-  const xOffset = pageLayout.offsetForHoles / 2;
-  const yOffset = pageLayout.height / 2;
+  const xOffset = drawArea.x + (drawArea.width / 2);
+  const yOffset = drawArea.height / 2;
   const verticalOffset = 72 * 4.25          // each hole is 4.25" apart - 72 pt/in
   const lineOffset = 12;                    // about 1/4 inch
 
@@ -475,21 +475,21 @@ function main() {
   const pageSize = appConfig.paperSize;       // 'letter' or 'a4'
   const pageUnits = "pt";                     // or 'mm', 'in' or others
   let orientation = 'p';                  // default to portrait
+  // TODO a5 not support yet (next version)
   if (appConfig.pageSize == "a5") {
     orientation = "l";                    // portrait - take up entire paper
   }
 
   // create the PDF - note, 1st param can't be a string so need to use ?
-  const doc = new jsPDF(orientation == 'p' ? 'p' : 'l', pageUnits, pageSize, false);
+  const compressPDF = false;
+  const doc = new jsPDF(orientation == 'p' ? 'p' : 'l', pageUnits, pageSize, compressPDF);
 
-  // get pager size 
-  const paperInfo = doc.getPageInfo(1);
+  // get pager size in pts from jsPDF
   const paperLayout = new PaperDetails();
+  const paperInfo = doc.getPageInfo(1);
   paperLayout.width = paperInfo.pageContext.mediaBox.topRightX;
   paperLayout.height = paperInfo.pageContext.mediaBox.topRightY;
   console.log("paper size:",paperLayout.width, paperLayout.height);
-
-  // set page layout
 
   // setup page details
   // can be 1 planner page per paper page or 2 planner pages per paper page  
@@ -505,31 +505,55 @@ function main() {
   const bodyHeight = paperLayout.height * 0.80;
   const footerOffset = paperLayout.height * 0.95;
 
+  // if double side, check if we need to add a blank 
+  let drawArea = new DrawArea();
+  drawArea.x = pageLayout.leftMargin;
+  drawArea.y = 0;
+  drawArea.width = paperLayout.width - 
+                  (paperLayout.leftMargin+paperLayout.rightMargin+pageLayout.offsetForHoles);
+
   // start generating the pages
   let pageNumber = 0;
   let currentDate = appConfig.printDateRange.firstDate
   while (currentDate <= appConfig.printDateRange.lastDate) {
-  // for (let week = 1; week <= numberOfWeeks; week++) {
 
-    let day = currentDate.getDay();     // 0 (sun) to 6 (sat)
-    day = (day == 0)? 7 : day;
-    console.log('current date:', currentDate.toString(), ' day:', day);
-
-    if (pageNumber > 0) {
+      // get 1st day of the week - sun: 0 to sat: 6
+      let day = currentDate.getDay();    
+      day = (day == 0)? 7 : day;              // move sun from 0 to 7
+      console.log('current date:', currentDate.toString(), ' day:', day);
+    
+    if (pageNumber == 0) {
+      // if double sided, need to check if 1st page is blank
+      //   if first date is on left page (ie M T or W)
+      //   1st page will be blank as left page is on back (ie 2nd page)
+      if (!appConfig.singleSided && ((day >= 1) && (day <= 3))) {
+        doc.addPage();
+      }
+    } else {
+      // if not 1st page, need to add a new page
       doc.addPage();
     } 
 
-    // see if current week includes M T or W
+    // see if 1st date is on left or right page
+    // left is M T W and right is T F S S
     if ((day >= 1) && (day <= 3)) {
       
       // start with 1st (left) page
-      console.log("printing left page for week ");
+      console.log("printing left page (for given week)");
       console.log(currentDate.toString());
         
+      // create rectangle for each section to use
+
       leftSideHeader(doc, pageLayout, headerHeight+1, currentDate);
       body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
-      addHolePunchGuides(doc, pageLayout)
+
+      drawArea.x = pageLayout.width - pageLayout.offsetForHoles;
+      drawArea.y = 0;
+      drawArea.width = pageLayout.offsetForHoles;
+      drawArea.height = pageLayout.height;
+
+      addHolePunchGuides(doc, drawArea)
 
       // move to the next page
       currentDate.setDate(currentDate.getDate()+(4-day));
@@ -539,7 +563,13 @@ function main() {
       rightSideHeader(doc, pageLayout, headerHeight+1, currentDate);
       body(doc, pageLayout, headerHeight, bodyHeight, currentDate);
       footer(doc, pageLayout, footerOffset);
-      addHolePunchGuides(doc, pageLayout)
+
+      drawArea.x = 0;
+      drawArea.y = 0;
+      drawArea.width = pageLayout.offsetForHoles;
+      drawArea.height = pageLayout.height;
+
+      addHolePunchGuides(doc, drawArea)
       console.log("printing right page for week ");
 
       // } 
