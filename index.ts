@@ -384,6 +384,7 @@ function getAppOptions() {
   // .option('-m, --months <char>');
   .option('-d, --start-date <yyyy-mm-dd>', 'start printing from this date')
   .option('-m, --months <number>', 'number of months to print', '1')
+  .addOption( new Option('-p, --paper-size <size>', 'size of planner pages').choices(['letter', 'a4', 'a5']).default('letter'))
   .option('--single-sided', 'print on single side of page', true)
   .addOption( new Option('--double-sided', 'print on both sides of page').conflicts('singleSided'))
   
@@ -413,8 +414,13 @@ function getAppOptions() {
 
   // setup user input for app (as we don't have a UI yet)
   let appConfig = new AppConfig();
-  appConfig.paperSize = "letter";
-  appConfig.pageSize = "letter";
+  appConfig.pageSize = options.paperSize;
+  if (appConfig.pageSize === "a5") {
+    // a5 is printed 2 per page.  rest are one per page
+    appConfig.paperSize = "letter";
+  } else {
+    appConfig.paperSize = appConfig.pageSize;
+  }
   appConfig.printDateRange.setRange( startDate, endDate)
   appConfig.singleSided = options.singleSided;
   console.log("print from: ", appConfig.printDateRange.firstDate.toDateString());
@@ -475,8 +481,7 @@ function main() {
   const pageSize = appConfig.paperSize;       // 'letter' or 'a4'
   const pageUnits = "pt";                     // or 'mm', 'in' or others
   let orientation = 'p';                  // default to portrait
-  // TODO a5 not support yet (next version)
-  if (appConfig.pageSize == "a5") {
+  if (appConfig.pageSize === "a5") {
     orientation = "l";                    // portrait - take up entire paper
   }
 
@@ -492,9 +497,17 @@ function main() {
   console.log("paper size:",paperLayout.width, paperLayout.height);
 
   // setup page details
+  
+  // TODO: figure out what coordinate are if a5
+  //       also page order is different (single sized vs double sided)
+
   // can be 1 planner page per paper page or 2 planner pages per paper page  
   const pageLayout = new PageLayout();
   pageLayout.width = paperLayout.width;
+  if (appConfig.pageSize === "a5") {
+    pageLayout.width = paperLayout.width/2;
+  }
+  console.log("page size: ",pageLayout.width, pageLayout.height);
   pageLayout.height = paperLayout.height;
   pageLayout.leftMargin = pageLayout.width*0.02;
   pageLayout.rightMargin = pageLayout.width*0.02;
@@ -509,8 +522,8 @@ function main() {
   let drawArea = new DrawArea();
   drawArea.x = pageLayout.leftMargin;
   drawArea.y = 0;
-  drawArea.width = paperLayout.width - 
-                  (paperLayout.leftMargin+paperLayout.rightMargin+pageLayout.offsetForHoles);
+  drawArea.width = pageLayout.width - 
+                  (pageLayout.leftMargin+pageLayout.rightMargin+pageLayout.offsetForHoles);
 
   // start generating the pages
   let pageNumber = 0;
@@ -533,6 +546,8 @@ function main() {
       // if not 1st page, need to add a new page
       doc.addPage();
     } 
+
+    console.log("pageLayout: ",pageLayout);
 
     // see if 1st date is on left or right page
     // left is M T W and right is T F S S

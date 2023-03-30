@@ -1,14 +1,14 @@
 # PDF Planner Generator
 
-## Status
-
-The code works but has very basic functionality at the moment
-
 ## Overview
 
 This program will generate insert pages for a weekly planner. This removes the need to buy new inserts each year.
 
 The pages will be either A4 or letter sized and can be printed either single-sided or double-sided.  Right now only a weekly planner format is supported.
+
+## Status
+
+The code works but has very basic functionality at the moment
 
 ## Building
 
